@@ -28,8 +28,8 @@ class ChestXRayPneumoniaDataset(Dataset):
         normal_cases = []
         pneumonia_cases = []
         for folder in [train_dir, val_dir, test_dir]:
-            normal_cases.extend((folder / 'NORMAL').glob('*.jpeg'))
-            pneumonia_cases.extend((folder / 'PNEUMONIA').glob('*.jpeg'))
+            normal_cases.extend((folder / 'Normal').glob('*.jpeg'))
+            pneumonia_cases.extend((folder / 'Pneumonia').glob('*.jpeg'))
             
         self.labels = np.concatenate((
             np.zeros(len(normal_cases)),
