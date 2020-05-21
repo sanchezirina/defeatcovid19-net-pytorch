@@ -5,22 +5,29 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 class NIHCX38Dataset(Dataset):
-    ''' Integrates the National Institutes of Health Clinical Center chest x-ray dataset.
+    """
+    Integrates the National Institutes of Health Clinical Center chest x-ray dataset.
     
     Dataset description: https://www.nih.gov/news-events/news-releases/nih-clinical-center-provides-one-largest-publicly-available-chest-x-ray-datasets-scientific-community
     Download the dataset from https://nihcc.app.box.com/v/ChestXray-NIHCC to the folder input/nih-cx38
     Extract all image_??.tar.gz to the input/nih-cx38/images/ folder and ensure input/nih-cx38/Data_Entry_2017.csv is present.
-    '''
+    """
 
     def __init__(self, path, size=128, augment=None, balance=False):
         super(NIHCX38Dataset, self).__init__()
-        print('{} initialized with size={}, augment={}'.format(self.__class__.__name__, size, augment))
-        print('Dataset is located in {}'.format(path))
+        self.path = path
         self.size = size
         self.augment = augment
+        self.labels = None
+        self.pd = None
+
+
+    def build():
+        print('{} initialized with size={}, augment={}'.format(self.__class__.__name__, size, augment))
+        print('Dataset is located in {}'.format(path))
         
-        image_dir = path / 'images'
-        metadata_path = path / 'Data_Entry_2017.csv'
+        image_dir = self.path / 'images'
+        metadata_path = self.path / 'Data_Entry_2017.csv'
         
         df_metadata = pd.read_csv(metadata_path)
         df_metadata['labels'] = df_metadata['Finding Labels'].str.split('|')

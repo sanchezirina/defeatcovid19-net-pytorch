@@ -7,13 +7,19 @@ from torch.utils.data import Dataset
 class COVIDChestXRayDataset(Dataset):
     def __init__(self, path, size=128, augment=None):
         super(COVIDChestXRayDataset, self).__init__()
-        print('{} initialized with size={}, augment={}'.format(self.__class__.__name__, size, augment))
-        print('Dataset is located in {}'.format(path))
+        self.path = path
         self.size = size
         self.augment = augment
+        self.labels = None
+        self.df = None
         
-        image_dir = path / 'images'
-        metadata_path = path / 'metadata.csv'
+    
+    def build(self):
+        print(f"{self.__class__.__name__} initialized with size={self.size}, augment={self.augment}")
+        print(f"Dataset is located in {self.path}")
+        
+        image_dir = self.path / 'images'
+        metadata_path = self.path / 'metadata.csv'
         
         df_metadata = pd.read_csv(metadata_path, header=0)
         # Drop CT scans
@@ -31,7 +37,7 @@ class COVIDChestXRayDataset(Dataset):
         
         del images
 
-        print("Dataset: {}".format(self.df))
+        print(f"Dataset: {self.df}")
             
 
     @staticmethod
