@@ -25,19 +25,21 @@ n_splits = 5
 
 # Pretrain with Chest XRay Pneumonia dataset (>5k images)
 pneumonia_classifier = Resnet34()
-dataset = ChestXRayPneumoniaDataset(Path('data/chest-xray-pneumonia'), size)
+dataset = ChestXRayPneumoniaDataset(Path('/data/chest_xray_pneumonia'), size)
 dataset.build()
 # dataset = NIHCX38Dataset(Path('input/nih-cx38'), size, balance=True)
+# dataset.build()
 train_idx, validation_idx = train_test_split(
     list(range(len(dataset))),
     test_size=0.2,
     stratify=dataset.labels
 )
 trainer = Trainer(pneumonia_classifier, dataset, batch_size, train_idx, validation_idx)
-trainer.run(max_epochs=2)
+# trainer.run(max_epochs=2)
 
 # Fine tune with COVID-19 Chest XRay dataset (~120 images)
-dataset = COVIDChestXRayDataset(Path('data/covid_chestxray'), size)
+dataset = COVIDChestXRayDataset(Path('/data/covid-chestxray-dataset'), size)
+dataset.build()
 print('Executing a {}-fold cross validation'.format(n_splits))
 split = 1
 skf = StratifiedKFold(n_splits=n_splits)
