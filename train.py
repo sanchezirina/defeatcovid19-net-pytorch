@@ -31,6 +31,7 @@ pneumonia_classifier = Resnet34()
 
 dataset = ChestXRayPneumoniaDataset(Path("/data/chest_xray_pneumonia"), size)
 dataset.build()
+
 # dataset = NIHCX38Dataset(Path('input/nih-cx38'), size, balance=True)
 # dataset.build()
 
