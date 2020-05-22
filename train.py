@@ -35,7 +35,7 @@ train_idx, validation_idx = train_test_split(
     stratify=dataset.labels
 )
 trainer = Trainer(pneumonia_classifier, dataset, batch_size, train_idx, validation_idx)
-# trainer.run(max_epochs=2)
+trainer.run(max_epochs=2)
 
 # Fine tune with COVID-19 Chest XRay dataset (~120 images)
 dataset = COVIDChestXRayDataset(Path('/data/covid-chestxray-dataset'), size)
