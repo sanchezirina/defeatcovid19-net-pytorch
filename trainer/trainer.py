@@ -14,15 +14,17 @@ from metrics import Accuracy
 
 
 class Trainer:
-    def __init__(self, classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir=None):
+    def __init__(self, name, classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir=None):
         self.logger = logging.getLogger(__name__)
 
+        self.name = name
         self.classifier = classifier
         self.batch_size = batch_size
         self.logger.info(
-            "Trainer started with classifier: {} dataset: {} batch size: {}".format(
-                classifier.__class__.__name__, dataset, batch_size
-            )
+            f"Trainer '{self.name}' started with:\n "
+            f"Classifier: {classifier.__class__.__name__}\n "
+            f"Dataset: {dataset.__class__.__name__}\n "
+            f"Batch size: {batch_size}"
         )
 
         self.optimizer = None
@@ -190,8 +192,8 @@ class Trainer:
         return loss, m
 
     def save(self, model, optimizer, iter, epoch):
-        checkpoints_path = self.checkpoints_dir / f"{iter}_model.pth"
-        optimizer_path = self.checkpoints_dir / f"{iter}_optimizer.pth"
+        checkpoints_path = self.checkpoints_dir / f"{self.name}-{iter}_model.pth"
+        optimizer_path = self.checkpoints_dir / f"{self.name}-{iter}_optimizer.pth"
         torch.save(model.state_dict(), str(checkpoints_path))
         torch.save(
             {"optimizer": optimizer.state_dict(), "iter": iter, "epoch": epoch}, str(optimizer_path),

@@ -73,7 +73,9 @@ def main(
     # dataset.build()
 
     train_idx, validation_idx = train_test_split(list(range(len(dataset))), test_size=0.2, stratify=dataset.labels)
-    trainer = Trainer(pneumonia_classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir)
+    trainer = Trainer(
+        "baseline_classifier", pneumonia_classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir
+    )
     trainer.run(max_epochs=baseline_epochs)
 
     # Fine tune with COVID-19 Chest XRay dataset (~120 images)
@@ -95,7 +97,9 @@ def main(
             # Checkpoints per split
             checkpoints_dir_split = checkpoints_dir / f"split_{split}"
             checkpoints_dir_split.mkdir(exist_ok=True)
-            trainer = Trainer(classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir_split)
+            trainer = Trainer(
+                "covid19_classifier", classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir_split
+            )
             trainer_metrics = trainer.run(max_epochs=finetune_epochs)
 
             # Record metrics for the current split
@@ -108,7 +112,7 @@ def main(
         # Summarize metrics from all splits and compute mean and std
         table = BeautifulTable()
         table.column_headers = (
-            ["Metric name"] + [f"Split {split_num+1}" for split_num in range(split)] + ["Mean", "Std"]
+            ["Metric name"] + [f"Split {split_num+1}" for split_num in range(n_splits)] + ["Mean", "Std"]
         )
         for data_split_id, data_split_metrics in kfold_metrics.items():
             for metric_id, metric in data_split_metrics.items():
@@ -120,11 +124,14 @@ def main(
         logger.info(f"SUMMARY\n{table}")
 
     else:
+        logger.info("Training with a fixed split")
         # Train / test split for covid data
         train_idx, validation_idx = train_test_split(list(range(len(dataset))), test_size=0.2, stratify=dataset.labels)
         # Start from the pneumonia classifier
         classifier = copy.deepcopy(pneumonia_classifier)
-        trainer = Trainer(classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir)
+        trainer = Trainer(
+            "covid19_classifier", classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir
+        )
         trainer_metrics = trainer.run(max_epochs=15)
 
         # Summarize metrics from training
