@@ -1,12 +1,15 @@
-import cv2
-import pandas as pd
-import numpy as np
-from PIL import Image
-from torch.utils.data import Dataset
-import qmenta.client as qclient
 from pathlib import Path
 
-PROJECT_NAME = 'Kaggle: Chest X-Ray Images (Pneumonia)'
+import cv2
+import numpy as np
+import pandas as pd
+from PIL import Image
+from torch.utils.data import Dataset
+
+import qmenta.client as qclient
+
+PROJECT_NAME = "Kaggle: Chest X-Ray Images (Pneumonia)"
+
 
 class ChestXRayPneumoniaDataset(Dataset):
     def __init__(self, path, size=128, augment=None):
@@ -16,29 +19,26 @@ class ChestXRayPneumoniaDataset(Dataset):
         self.augment = augment
         self.labels = None
         self.df = None
-            
+
     def build(self):
-        print('{} initialized with size={}, augment={}'.format(self.__class__.__name__, self.size, self.augment))
-        print('Dataset is located in {}'.format(self.path))
-        
-        train_dir = self.path / 'train'
-        val_dir = self.path / 'val'
-        test_dir = self.path / 'test'
-        
+        print("{} initialized with size={}, augment={}".format(self.__class__.__name__, self.size, self.augment))
+        print("Dataset is located in {}".format(self.path))
+
+        train_dir = self.path / "train"
+        val_dir = self.path / "val"
+        test_dir = self.path / "test"
+
         normal_cases = []
         pneumonia_cases = []
         for folder in [train_dir, val_dir, test_dir]:
-            normal_cases.extend((folder / 'Normal').glob('*.jpeg'))
-            pneumonia_cases.extend((folder / 'Pneumonia').glob('*.jpeg'))
-            
-        self.labels = np.concatenate((
-            np.zeros(len(normal_cases)),
-            np.ones(len(pneumonia_cases))
-        )).reshape(-1, 1)
+            normal_cases.extend((folder / "Normal").glob("*.jpeg"))
+            pneumonia_cases.extend((folder / "Pneumonia").glob("*.jpeg"))
+
+        self.labels = np.concatenate((np.zeros(len(normal_cases)), np.ones(len(pneumonia_cases)))).reshape(-1, 1)
         images = np.concatenate((normal_cases, pneumonia_cases)).reshape(-1, 1)
-        
-        self.df = pd.DataFrame(np.concatenate((images, self.labels), axis=1), columns=['image', 'label'])
-        
+
+        self.df = pd.DataFrame(np.concatenate((images, self.labels), axis=1), columns=["image", "label"])
+
         del images
 
         print("Dataset: {}".format(self.df))
@@ -52,16 +52,16 @@ class ChestXRayPneumoniaDataset(Dataset):
             img = np.dstack([img, img, img])
         else:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
+
         # size, size, chan -> chan, size, size
         img = np.transpose(img, axes=[2, 0, 1])
-        
+
         return img
-    
+
     def __getitem__(self, index):
         row = self.df.iloc[index]
-        img = self._load_image(row['image'], self.size)
-        label = row['label']        
+        img = self._load_image(row["image"], self.size)
+        label = row["label"]
 
         if self.augment is not None:
             img = self.augment(img)
@@ -118,7 +118,7 @@ class ChestXRayPneumoniaDataset(Dataset):
 
                 # Count downloaded file
                 total_num_files += 1
-            
+
             if count % 100 == 0:
                 print(f"Processed {count}/{num_containers}")
                 print(f"Total number of downloaded files: {total_num_files}")

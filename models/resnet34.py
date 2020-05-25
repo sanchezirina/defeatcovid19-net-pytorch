@@ -1,11 +1,12 @@
 import torch.nn as nn
 from torchvision.models import resnet34
 
+
 class Resnet34(nn.Module):
     def __init__(self, num_classes=1, dropout=0.5):
         super(Resnet34, self).__init__()
         resnet = resnet34(pretrained=True)
-        
+
         self.conv1 = resnet.conv1
         self.bn1 = resnet.bn1
         self.relu = resnet.relu
@@ -20,13 +21,13 @@ class Resnet34(nn.Module):
             nn.BatchNorm1d(bottleneck_features),
             nn.Dropout(dropout),
             nn.Linear(bottleneck_features, num_classes),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
-        
+
     def forward(self, x):
         # mean = MEAN
         # std = STD
-        x = x / 255.
+        x = x / 255.0
         # x = torch.cat([
         #     (x[:, [0]] - mean[0]) / std[0],
         #     (x[:, [1]] - mean[1]) / std[1],
@@ -43,7 +44,7 @@ class Resnet34(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.avgpool(x) 
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x

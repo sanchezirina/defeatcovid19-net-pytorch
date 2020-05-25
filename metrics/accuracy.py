@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 class Accuracy(nn.Module):
     def __init__(self, threshold=0.5):
         super().__init__()

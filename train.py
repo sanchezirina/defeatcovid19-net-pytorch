@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 import torch
 
 import diagnostics
-from datasets import ChestXRayPneumoniaDataset, COVIDChestXRayDataset, NIHCX38Dataset
+from datasets import ChestXRayPneumoniaDataset, COVIDChestXRayDataset  # NIHCX38Dataset
 from models import Resnet34
 from trainer import Trainer
 
@@ -40,9 +40,9 @@ trainer = Trainer(pneumonia_classifier, dataset, batch_size, train_idx, validati
 trainer.run(max_epochs=2)
 
 # Fine tune with COVID-19 Chest XRay dataset (~120 images)
-dataset = COVIDChestXRayDataset(Path('/data/covid-chestxray-dataset'), size)
+dataset = COVIDChestXRayDataset(Path("/data/covid-chestxray-dataset"), size)
 dataset.build()
-print('Executing a {}-fold cross validation'.format(n_splits))
+print("Executing a {}-fold cross validation".format(n_splits))
 split = 1
 skf = StratifiedKFold(n_splits=n_splits)
 for train_idx, validation_idx in skf.split(dataset.df, dataset.labels):
