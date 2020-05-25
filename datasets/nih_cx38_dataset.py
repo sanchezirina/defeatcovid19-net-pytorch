@@ -1,6 +1,7 @@
-import cv2
-import pandas as pd
+import logging
+
 import numpy as np
+import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 
@@ -8,7 +9,6 @@ from torch.utils.data import Dataset
 class NIHCX38Dataset(Dataset):
     """
     Integrates the National Institutes of Health Clinical Center chest x-ray dataset.
-    
     Dataset description: https://www.nih.gov/news-events/news-releases/nih-clinical-center-provides-one-largest-publicly-available-chest-x-ray-datasets-scientific-community
     Download the dataset from https://nihcc.app.box.com/v/ChestXray-NIHCC to the folder input/nih-cx38
     Extract all image_??.tar.gz to the input/nih-cx38/images/ folder and ensure input/nih-cx38/Data_Entry_2017.csv is present.
@@ -16,15 +16,18 @@ class NIHCX38Dataset(Dataset):
 
     def __init__(self, path, size=128, augment=None, balance=False):
         super(NIHCX38Dataset, self).__init__()
+        self.logger = logging.getLogger(__name__)
+
         self.path = path
         self.size = size
         self.augment = augment
+        self.balance = balance
         self.labels = None
-        self.pd = None
+        self.df = None
 
-    def build():
-        print("{} initialized with size={}, augment={}".format(self.__class__.__name__, size, augment))
-        print("Dataset is located in {}".format(path))
+    def build(self):
+        self.logger.info(f"{self.__class__.__name__} initialized with size={self.size}, augment={self.augment}")
+        self.logger.info(f"Dataset is located in {self.path}")
 
         image_dir = self.path / "images"
         metadata_path = self.path / "Data_Entry_2017.csv"
@@ -33,10 +36,9 @@ class NIHCX38Dataset(Dataset):
         df_metadata["labels"] = df_metadata["Finding Labels"].str.split("|")
 
         # Pneumonia = 1, no Pneumonia = 0
-        finding_mask = lambda df, finding: df["labels"].apply(lambda l: finding in l)
-        pneumonia_mask = finding_mask(df_metadata, "Pneumonia")
+        pneumonia_mask = df_metadata["labels"].apply(lambda l: "Pneumonia" in l)
 
-        if balance:
+        if self.balance:
             pneumonia_indices = np.arange(len(pneumonia_mask))[pneumonia_mask]
             normal_indices = np.arange(len(pneumonia_mask))[~pneumonia_mask]
             if len(pneumonia_indices) < len(normal_indices):
@@ -56,22 +58,28 @@ class NIHCX38Dataset(Dataset):
 
         del images
 
-        print("Dataset: {}".format(self.df))
-        print("  Number of positive cases: {}".format(sum(self.labels)))
-        print("  Number of negative cases: {}".format(len(self.labels) - sum(self.labels)))
+        self.logger.debug("Dataset: {}".format(self.df))
+        self.logger.debug("  Number of positive cases: {}".format(sum(self.labels)))
+        self.logger.debug("  Number of negative cases: {}".format(len(self.labels) - sum(self.labels)))
 
     @staticmethod
     def _load_image(path, size):
-        img = Image.open(path)
-        img = cv2.resize(np.array(img), (size, size), interpolation=cv2.INTER_AREA)
-        if len(img.shape) == 2:
-            img = np.expand_dims(img, axis=2)
-            img = np.dstack([img, img, img])
-        else:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # Load image
+        im = Image.open(path)
+        im = im.resize((size, size))
+        im = np.array(im).astype("float32") / 255.0
+
+        # If image not RGB, replicate image in three channels
+        if im.ndim == 2:
+            im = np.expand_dims(im, axis=-1)
+            im = np.tile(im, 3)
+
+        # Remove transparency channel when present
+        if im.shape[-1] == 4:
+            im = im[:, :, :3]
 
         # size, size, chan -> chan, size, size
-        img = np.transpose(img, axes=[2, 0, 1])
+        img = np.transpose(im, axes=[2, 0, 1])
 
         return img
 

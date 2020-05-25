@@ -1,12 +1,11 @@
+import logging
 from pathlib import Path
 
-import cv2
 import numpy as np
 import pandas as pd
+import qmenta.client as qclient
 from PIL import Image
 from torch.utils.data import Dataset
-
-import qmenta.client as qclient
 
 PROJECT_NAME = "Kaggle: Chest X-Ray Images (Pneumonia)"
 
@@ -14,6 +13,8 @@ PROJECT_NAME = "Kaggle: Chest X-Ray Images (Pneumonia)"
 class ChestXRayPneumoniaDataset(Dataset):
     def __init__(self, path, size=128, augment=None):
         super(ChestXRayPneumoniaDataset, self).__init__()
+        self.logger = logging.getLogger(__name__)
+
         self.path = path
         self.size = size
         self.augment = augment
@@ -21,8 +22,8 @@ class ChestXRayPneumoniaDataset(Dataset):
         self.df = None
 
     def build(self):
-        print("{} initialized with size={}, augment={}".format(self.__class__.__name__, self.size, self.augment))
-        print("Dataset is located in {}".format(self.path))
+        self.logger.info(f"{self.__class__.__name__} initialized with size={self.size}, augment={self.augment}")
+        self.logger.info(f"Dataset is located in {self.path}")
 
         train_dir = self.path / "train"
         val_dir = self.path / "val"
@@ -41,20 +42,26 @@ class ChestXRayPneumoniaDataset(Dataset):
 
         del images
 
-        print("Dataset: {}".format(self.df))
+        self.logger.debug(f"Dataset: {self.df}")
 
     @staticmethod
     def _load_image(path, size):
-        img = Image.open(path)
-        img = cv2.resize(np.array(img), (size, size), interpolation=cv2.INTER_AREA)
-        if len(img.shape) == 2:
-            img = np.expand_dims(img, axis=2)
-            img = np.dstack([img, img, img])
-        else:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # Load image
+        im = Image.open(path)
+        im = im.resize((size, size))
+        im = np.array(im).astype("float32") / 255.0
+
+        # If image not RGB, replicate image in three channels
+        if im.ndim == 2:
+            im = np.expand_dims(im, axis=-1)
+            im = np.tile(im, 3)
+
+        # Remove transparency channel when present
+        if im.shape[-1] == 4:
+            im = im[:, :, :3]
 
         # size, size, chan -> chan, size, size
-        img = np.transpose(img, axes=[2, 0, 1])
+        img = np.transpose(im, axes=[2, 0, 1])
 
         return img
 
@@ -97,7 +104,7 @@ class ChestXRayPneumoniaDataset(Dataset):
                 x for x in project.list_container_files_metadata(str(container_id)) if x["name"] in container_files
             ]
             if type(container_files_metadata) == bool:
-                print(f"No files in container of session {patient_sn!r} / {ssid!r}")
+                self.logger.info(f"No files in container of session {patient_sn!r} / {ssid!r}")
                 continue
 
             split = container["md_split"]
@@ -111,14 +118,14 @@ class ChestXRayPneumoniaDataset(Dataset):
                     group_path.mkdir(parents=True, exist_ok=True)
                 file_path = group_path / file_name
                 if file_path.is_file():
-                    print(f"{file_name} already exists in {file_path} ")
+                    self.logger.info(f"{file_name} already exists in {file_path} ")
                 else:
                     project.download_file(container_id, file_name, str(file_path), True)
-                    print(f"Downloaded {file_name} from {patient_sn}/{ssid}")
+                    self.logger.info(f"Downloaded {file_name} from {patient_sn}/{ssid}")
 
                 # Count downloaded file
                 total_num_files += 1
 
             if count % 100 == 0:
-                print(f"Processed {count}/{num_containers}")
-                print(f"Total number of downloaded files: {total_num_files}")
+                self.logger.info(f"Processed {count}/{num_containers}")
+                self.logger.info(f"Total number of downloaded files: {total_num_files}")
