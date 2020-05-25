@@ -1,4 +1,6 @@
+import logging
 import math
+from pathlib import Path
 from timeit import default_timer as timer
 
 import numpy as np
@@ -12,10 +14,12 @@ from metrics import Accuracy
 
 
 class Trainer:
-    def __init__(self, classifier, dataset, batch_size, train_idx, validation_idx):
+    def __init__(self, classifier, dataset, batch_size, train_idx, validation_idx, checkpoints_dir=None):
+        self.logger = logging.getLogger(__name__)
+
         self.classifier = classifier
         self.batch_size = batch_size
-        print(
+        self.logger.info(
             "Trainer started with classifier: {} dataset: {} batch size: {}".format(
                 classifier.__class__.__name__, dataset, batch_size
             )
@@ -36,11 +40,13 @@ class Trainer:
         self.train_loader = SubsetRandomDataLoader(dataset, train_idx, batch_size)
         self.validation_loader = SubsetRandomDataLoader(dataset, validation_idx, batch_size)
 
-        print("Train set: {}".format(len(train_idx)))
-        print("Validation set: {}".format(len(validation_idx)))
+        self.logger.info("Train set: {}".format(len(train_idx)))
+        self.logger.info("Validation set: {}".format(len(validation_idx)))
 
         self.it_per_epoch = math.ceil(len(train_idx) / self.batch_size)
-        print("Training with {} mini-batches per epoch".format(self.it_per_epoch))
+        self.logger.info("Training with {} mini-batches per epoch".format(self.it_per_epoch))
+
+        self.checkpoints_dir = Path(checkpoints_dir or "checkpoints/")
 
     def run(self, max_epochs=10, lr=0.01):
         self.classifier = self.classifier.cuda()
@@ -51,7 +57,7 @@ class Trainer:
         it_save = self.it_per_epoch * 5
         it_log = math.ceil(self.it_per_epoch / 5)
         it_smooth = self.it_per_epoch
-        print("Logging performance every {} iter, smoothing every: {} iter".format(it_log, it_smooth))
+        self.logger.info("Logging performance every {} iter, smoothing every: {} iter".format(it_log, it_smooth))
 
         self.optimizer = optim.SGD(
             filter(lambda p: p.requires_grad, model.parameters()), lr=lr, momentum=0.9, weight_decay=0.0001
@@ -62,18 +68,18 @@ class Trainer:
         criterion = criterion.cuda()
         metrics = [Accuracy(), roc_auc_score]
 
-        print("{}'".format(self.optimizer))
-        print("{}'".format(self.scheduler))
-        print("{}'".format(criterion))
-        print("{}'".format(metrics))
+        self.logger.info("{}'".format(self.optimizer))
+        self.logger.info("{}'".format(self.scheduler))
+        self.logger.info("{}'".format(criterion))
+        self.logger.info("{}'".format(metrics))
 
         train_loss = 0
         train_roc = 0
         train_acc = 0
 
-        print("                    |         VALID        |        TRAIN         |         ")
-        print(" lr     iter  epoch | loss    roc    acc   | loss    roc    acc   |  time   ")
-        print("------------------------------------------------------------------------------")
+        self.logger.info("                    |         VALID        |        TRAIN         |         ")
+        self.logger.info(" lr     iter  epoch | loss    roc    acc   | loss    roc    acc   |  time   ")
+        self.logger.info("------------------------------------------------------------------------------")
 
         start = timer()
         while epoch < max_epochs:
@@ -113,7 +119,7 @@ class Trainer:
                 self.scheduler.step()
 
                 if it % it_log == 0:
-                    print(
+                    self.logger.info(
                         "{:5f} {:4d} {:5.1f} |                      |                      | {:6.2f}".format(
                             lr, it, epoch, timer() - start
                         )
@@ -133,7 +139,7 @@ class Trainer:
             valid_loss, valid_m = self.do_valid(model, criterion, metrics)
             valid_acc, valid_roc = valid_m
 
-            print(
+            self.logger.info(
                 "{:5f} {:4d} {:5.1f} | {:0.3f}* {:0.3f}  {:0.3f}  | {:0.3f}* {:0.3f}  {:0.3f}  | {:6.2f}".format(
                     lr, it, epoch, valid_loss, valid_roc, valid_acc, train_loss, train_roc, train_acc, timer() - start
                 )
@@ -142,7 +148,14 @@ class Trainer:
             # Data loader end
         # Training end
 
+        # Save checkpoints
         self.save(model, self.optimizer, it, epoch)
+
+        # Return results
+        return {
+            "train": {"loss": train_loss, "roc": train_roc, "accuracy": train_acc},
+            "val": {"loss": valid_loss, "roc": valid_roc, "accuracy": valid_acc},
+        }
 
     def do_valid(self, model, criterion, metrics):
         model.eval()
@@ -177,8 +190,9 @@ class Trainer:
         return loss, m
 
     def save(self, model, optimizer, iter, epoch):
-        torch.save(model.state_dict(), "checkpoints/{}_model.pth".format(iter))
+        checkpoints_path = self.checkpoints_dir / f"{iter}_model.pth"
+        optimizer_path = self.checkpoints_dir / f"{iter}_optimizer.pth"
+        torch.save(model.state_dict(), str(checkpoints_path))
         torch.save(
-            {"optimizer": optimizer.state_dict(), "iter": iter, "epoch": epoch},
-            "checkpoints/{}_optimizer.pth".format(iter),
+            {"optimizer": optimizer.state_dict(), "iter": iter, "epoch": epoch}, str(optimizer_path),
         )
