@@ -21,7 +21,7 @@ diagnostics.run()
 
 
 def main(
-    experiment_dir, baseline_epochs=20, finetune_epochs=15, seed=6666, batch_size=64, image_size=256, n_splits=None
+    experiment_dir, baseline_epochs=20, finetune_epochs=15, seed=None, batch_size=64, image_size=256, n_splits=None
 ):
     """
     Main training loop
